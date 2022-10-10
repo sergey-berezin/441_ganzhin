@@ -73,7 +73,7 @@ namespace ArcFace{
                     using IDisposableReadOnlyCollection<DisposableNamedOnnxValue> results = session.Run(inputs);
                     return Normalize(results.First(v => v.Name == "fc1").AsEnumerable<float>().ToArray());
                 }
-            }, ct);
+            }, ct, TaskCreationOptions.LongRunning, TaskScheduler.Default);
             
             
             
@@ -106,7 +106,7 @@ namespace ArcFace{
                 L.Add(("Similarity =", Similarity(embeddings1.Result, embeddings2.Result)));
 
                 return L;
-            }, token);
+            }, token, TaskCreationOptions.LongRunning, TaskScheduler.Default);
         }
     }
 }
