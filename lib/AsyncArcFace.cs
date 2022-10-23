@@ -91,22 +91,19 @@ namespace ArcFace{
             return L;
         }
         
-        public async Task<IEnumerable <(string, double)>> AsyncGetDistanceNSimilarity (Image<Rgb24> face1, Image<Rgb24> face2, CancellationToken token, string? taskName = null){
-            return await Task<IEnumerable <(string, double)>>.Factory.StartNew(() =>
-            {
-                var L = new List<(string, double)>();
+        public async Task<IEnumerable <(string, double)>> GetDistanceNSimilarityAsync (Image<Rgb24> face1, Image<Rgb24> face2, CancellationToken token, string? taskName = null){
+            var L = new List<(string, double)>();
                 
-                var embeddings1 = GetEmbeddingsAsync(face1, token);
-                if(IsCancel(token)){
-                    return L;
-                }
-                var embeddings2 = GetEmbeddingsAsync(face2, token);
-
-                L.Add(("Distance =", Distance(embeddings1.Result, embeddings2.Result) * Distance(embeddings1.Result, embeddings2.Result)));
-                L.Add(("Similarity =", Similarity(embeddings1.Result, embeddings2.Result)));
-
+            var embeddings1 = await GetEmbeddingsAsync(face1, token);
+            if(IsCancel(token)){
                 return L;
-            }, token, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+            }
+            var embeddings2 = await GetEmbeddingsAsync(face2, token);
+
+            L.Add(("Distance =", Distance(embeddings1, embeddings2) * Distance(embeddings1, embeddings2)));
+            L.Add(("Similarity =", Similarity(embeddings1, embeddings2)));
+
+            return L;
         }
     }
 }
