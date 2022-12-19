@@ -92,29 +92,22 @@ namespace Lab2vb1
 
             var firstSelectedItem = (StackPanel)FirstList.SelectedItem;
             var secondSelectedItem = (StackPanel)SecondList.SelectedItem;
-            CalculationProgressBar.Value += 10;
-
 
             using var face1 = Image.Load<Rgb24>(FFolderPath + "\\" + firstSelectedItem.Children.OfType<TextBlock>().Last().Text);
             face1.Mutate(x => x.Resize(112, 112));
-            CalculationProgressBar.Value += 10;
 
             using var face2 = Image.Load<Rgb24>(SFolderPath + "\\" + secondSelectedItem.Children.OfType<TextBlock>().Last().Text);
             face2.Mutate(x => x.Resize(112, 112));
-            CalculationProgressBar.Value += 10;
-
-
-
-            var results = await arcface.GetDistanceNSimilarityAsync(face1, face2, cts.Token);
 
             CalculationProgressBar.Value += 50;
+            var results = await arcface.GetDistanceNSimilarityAsync(face1, face2, cts.Token);            
 
             if (!cts.Token.IsCancellationRequested)
             {
                 var ListRes = results.ToList();
                 SimilarityBlock.Text = ListRes[1].Item2.ToString();
                 DistanceBlock.Text = ListRes[0].Item2.ToString();
-                CalculationProgressBar.Value += 20;
+                CalculationProgressBar.Value += 50;
             }
             else
             {
