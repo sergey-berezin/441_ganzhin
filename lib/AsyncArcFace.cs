@@ -2,6 +2,7 @@ using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
 
 namespace ArcFace{
     public class NNForSimilarity{
@@ -57,12 +58,6 @@ namespace ArcFace{
 
             return t;
         }
-        float[] GetEmbeddings(Image<Rgb24> face) 
-        {
-            var inputs = new List<NamedOnnxValue> { NamedOnnxValue.CreateFromTensor("data", ImageToTensor(face)) };
-            using IDisposableReadOnlyCollection<DisposableNamedOnnxValue> results = session.Run(inputs);
-            return Normalize(results.First(v => v.Name == "fc1").AsEnumerable<float>().ToArray());
-        }
         async Task<float[]> GetEmbeddingsAsync(Image<Rgb24> face, CancellationToken ct) 
         {
             return await Task<float[]>.Factory.StartNew(() =>
@@ -73,37 +68,57 @@ namespace ArcFace{
                     using IDisposableReadOnlyCollection<DisposableNamedOnnxValue> results = session.Run(inputs);
                     return Normalize(results.First(v => v.Name == "fc1").AsEnumerable<float>().ToArray());
                 }
-            }, ct, TaskCreationOptions.LongRunning, TaskScheduler.Default);
-            
-            
-            
-            
-        }
-        public IEnumerable <(string, double)> GetDistanceNSimilarity (Image<Rgb24> face1, Image<Rgb24> face2){
-            var L = new List<(string, double)>();
-            
-            var embeddings1 = GetEmbeddings(face1);
-            var embeddings2 = GetEmbeddings(face2);
-
-            L.Add(("Distance =", Distance(embeddings1, embeddings2) * Distance(embeddings1, embeddings2)));
-            L.Add(("Similarity =", Similarity(embeddings1, embeddings2)));
-
-            return L;
+            }, ct, TaskCreationOptions.LongRunning, TaskScheduler.Default);  
         }
         
-        public async Task<IEnumerable <(string, double)>> GetDistanceNSimilarityAsync (Image<Rgb24> face1, Image<Rgb24> face2, CancellationToken token, string? taskName = null){
+        public async Task<float[]> GetEmbedingsOutAsync(byte[] image, CancellationToken token)
+        {
+            var imageStream = new MemoryStream(image);
+            var face = await Image.LoadAsync<Rgb24>(imageStream, token);
+
+            face.Mutate(ctx => {
+                ctx.Resize(new ResizeOptions
+                {
+                    Size = new Size(112, 112),
+                    Mode = ResizeMode.Crop
+                });
+            });
+
+            if (token.IsCancellationRequested)
+                return new float[0];
+
+            return await GetEmbeddingsAsync(face, token);
+        }
+
+        public async Task<IEnumerable <(string, double)>> GetDistanceNSimilarityAsync (byte[] image1, byte[] image2, CancellationToken token, string? taskName = null){
             var L = new List<(string, double)>();
-                
-            var embeddings1 = await GetEmbeddingsAsync(face1, token);
-            if(IsCancel(token)){
+
+            var embeddings1 = await GetEmbedingsOutAsync(image1, token);
+
+            if (IsCancel(token))
+            {
                 return L;
             }
-            var embeddings2 = await GetEmbeddingsAsync(face2, token);
+
+            var embeddings2 = await GetEmbedingsOutAsync(image2, token);
+
 
             L.Add(("Distance =", Distance(embeddings1, embeddings2) * Distance(embeddings1, embeddings2)));
             L.Add(("Similarity =", Similarity(embeddings1, embeddings2)));
 
             return L;
         }
+
+        public List<(string, double)> EmbRedyGetDistanceNSimilarity(float[] embeddings1, float[] embeddings2, CancellationToken token, string? taskName = null)
+        {
+            var L = new List<(string, double)>();
+
+
+            L.Add(("Distance =", Distance(embeddings1, embeddings2) * Distance(embeddings1, embeddings2)));
+            L.Add(("Similarity =", Similarity(embeddings1, embeddings2)));
+
+            return L;
+        }
+
     }
 }
